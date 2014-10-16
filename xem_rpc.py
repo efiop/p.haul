@@ -3,6 +3,7 @@ import select
 import threading
 import traceback
 import util
+import struct
 
 rpc_port = 12345
 rpc_sk_buf = 256
@@ -41,22 +42,26 @@ class _rpc_proxy_caller:
 class rpc_proxy:
 	def __init__(self, conn, *args):
 		self._srv = conn
-		self._rpc_sk = self._make_sk()
+		self._rpc_sk = self._make_sk(init=True)
 		util.set_cloexec(self._rpc_sk)
 		_rpc_proxy_caller(self._rpc_sk, RPC_CMD, "init_rpc")(args)
 
 	def __getattr__(self, attr):
 		return _rpc_proxy_caller(self._rpc_sk, RPC_CALL, attr)
 
-	def _make_sk(self):
+	def _make_sk(self, init=False):
 		sk = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		sk.connect((self._srv, rpc_port))
-		return sk
+		if init:
+			return sk
+		else:
+			host = _rpc_proxy_caller(sk, RPC_CMD, "get_name")()
+			return (sk, host)
 
 	def open_socket(self, uname):
-		sk = self._make_sk()
+		sk, host = self._make_sk()
 		c = _rpc_proxy_caller(self._rpc_sk, RPC_CMD, "pick_channel")
-		c(sk.getsockname(), uname)
+		c(host, uname)
 		return sk
 
 
@@ -75,6 +80,9 @@ class _rpc_server_sk:
 
 	def hash_name(self):
 		return self._sk.getpeername()
+
+	def get_name(self, mgr):
+		return self.hash_name()
 
 	def work(self, mgr):
 		raw_data = self._sk.recv(rpc_sk_buf)
