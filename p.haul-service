@@ -3,15 +3,21 @@
 import signal
 import xem_rpc
 import p_haul_service as ph_srv
+import argparse
 
 if __name__ == "__main__":
+	parser = argparse.ArgumentParser("Process HAULer service server")
+	parser.add_argument("-p", "--port", help = "port to bind on", default = xem_rpc.default_rpc_port, type = int)
+
+	args = vars(parser.parse_args())
+
 	sfd = None
 	def fin(foo, bar):
 		print "Stop by %d" % foo
 		sfd.close()
 
 	print "Starting p.haul rpyc service"
-	t = xem_rpc.rpc_threaded_srv(ph_srv.phaul_service)
+	t = xem_rpc.rpc_threaded_srv(ph_srv.phaul_service, args["port"])
 
 	# FIXME: Setup stop handlers
 	sfd = t.get_stop_fd()

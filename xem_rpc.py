@@ -5,7 +5,7 @@ import traceback
 import util
 import struct
 
-rpc_port = 12345
+default_rpc_port = 12345
 rpc_sk_buf = 256
 
 RPC_CMD = 1
@@ -51,7 +51,7 @@ class rpc_proxy:
 
 	def _make_sk(self, uname):
 		sk = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		sk.connect((self._srv, rpc_port))
+		sk.connect(self._srv)
 		sk.send(struct.pack("!i", len(uname)))
 		sk.send(uname.encode())
 		return sk
@@ -120,9 +120,9 @@ class _rpc_server_sk:
 			self._master.on_socket_open(sk._sk, uname)
 
 class _rpc_server_ask:
-	def __init__(self):
+	def __init__(self, port):
 		sk = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		sk.bind(("0.0.0.0", rpc_port))
+		sk.bind(("0.0.0.0", port))
 		sk.listen(8)
 		self._sk = sk
 		util.set_cloexec(self)
@@ -147,10 +147,10 @@ class _rpc_stop_fd:
 		mgr.stop()
 
 class _rpc_server_manager:
-	def __init__(self, srv_class):
+	def __init__(self, srv_class, port):
 		self._srv_class = srv_class
 		self._sk_by_name = {}
-		self._poll_list = [_rpc_server_ask()]
+		self._poll_list = [_rpc_server_ask(port)]
 		self._alive = True
 
 	def add(self, sk):
@@ -185,9 +185,9 @@ class _rpc_server_manager:
 		print "RPC Service stops"
 
 class rpc_threaded_srv(threading.Thread):
-	def __init__(self, srv_class):
+	def __init__(self, srv_class, port):
 		threading.Thread.__init__(self)
-		self._mgr = _rpc_server_manager(srv_class)
+		self._mgr = _rpc_server_manager(srv_class, port)
 		self._stop_fd = None
 
 	def run(self):

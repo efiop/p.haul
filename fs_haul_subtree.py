@@ -23,7 +23,9 @@ class p_haul_fs:
 
 	def __run_rsync(self):
 		logf = open(os.path.join(self.__wdir, rsync_log_file), "w+")
-		dst = "%s:%s" % (self.__thost, os.path.dirname(self.__root))
+		#FIXME using __thost[0] here because __thost is (ip,port) tuple.
+		# Maybe need to pass port to rsync too?
+		dst = "%s:%s" % (self.__thost[0], os.path.dirname(self.__root))
 
 		# First rsync might be very long. Wait for it not
 		# to produce big pause between the 1st pre-dump and
