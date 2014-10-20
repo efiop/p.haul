@@ -6,6 +6,7 @@ import images
 import criu_api
 import xem_rpc
 import ssh_tunnel
+import atexit
 
 # Usage idea
 # p.haul <type> <id> <destination>
@@ -51,6 +52,7 @@ args = vars(parser.parse_args())
 args["to"] = parse_dest(args.pop("to"))
 
 ssh = ssh_tunnel.Tunnel()
+atexit.register(ssh.stop)
 args = ssh.filter_opts(args)
 ssh.start()
 
