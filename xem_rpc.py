@@ -4,6 +4,8 @@ import threading
 import traceback
 import util
 import struct
+import ssh_tunnel
+import atexit
 
 default_rpc_port = 12345
 rpc_sk_buf = 256
@@ -40,8 +42,12 @@ class _rpc_proxy_caller:
 			raise Exception("Proto resp error")
 
 class rpc_proxy:
-	def __init__(self, conn, *args):
-		self._srv = conn
+	def __init__(self, conn_opts, *args):
+		self._ssh = ssh_tunnel.Tunnel(conn_opts)
+		atexit.register(self._ssh.stop)
+		self._ssh.start()
+
+		self._srv = self._ssh.local_dst
 		self._rpc_sk = self._make_sk("rpc")
 		util.set_cloexec(self._rpc_sk)
 		_rpc_proxy_caller(self._rpc_sk, RPC_CMD, "init_rpc")(args)
@@ -62,6 +68,8 @@ class rpc_proxy:
 		c(uname)
 		return sk
 
+	def stop(self):
+		self._ssh.stop()
 
 
 #

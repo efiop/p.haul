@@ -1,6 +1,7 @@
 import os
 import fcntl
 import errno
+import xem_rpc
 
 class net_dev:
 	def init(self):
@@ -44,3 +45,23 @@ def makedirs(dirpath):
 			pass
 		else:
 			raise
+
+def parse_dest_opts(opts):
+	dest_opts = {}
+
+	# parse string IP:PORT into tuple (ip,port)
+	spl = opts.pop("to").split(":", 1)
+	if len(spl) == 1:
+		ip = spl[0]
+		port = xem_rpc.default_rpc_port
+	else:
+		ip = spl[0]
+		port = int(spl[1])
+	dest_opts["host"] = (ip, port)
+
+	# pop all ssh* opts
+	for k in opts.keys():
+		if k.startswith("ssh"):
+			dest_opts[k] = opts.pop(k)
+
+	return dest_opts, opts

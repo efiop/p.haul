@@ -21,13 +21,13 @@ phaul_iter_min_size = 64
 phaul_iter_grow_max = 10
 
 class phaul_iter_worker:
-	def __init__(self, p_type, dst):
+	def __init__(self, p_type, dst_opts):
 		self._mstat = mstats.migration_stats()
 		self.iteration = 0
 		self.prev_stats = None
 
 		print "Connecting to target host"
-		self.th = xem_rpc.rpc_proxy(dst)
+		self.th = xem_rpc.rpc_proxy(dst_opts)
 		self.data_sk = self.th.open_socket("datask")
 
 		print "Setting up local"
@@ -42,7 +42,7 @@ class phaul_iter_worker:
 			raise Exception("No FS driver found")
 
 		self.pid = self.htype.root_task_pid()
-		self.fs.set_target_host(dst)
+		self.fs.set_target_host(dst_opts["host"])
 
 		print "Setting up remote"
 		self.th.setup(p_type)
@@ -230,3 +230,4 @@ class phaul_iter_worker:
 		self._mstat.stop(self)
 		self.img.close()
 		cc.close()
+		self.th.stop()
