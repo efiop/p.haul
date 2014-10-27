@@ -8,10 +8,15 @@ import argparse
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser("Process HAULer service server")
 	parser.add_argument("-p", "--port", help = "port to bind on", default = xem_rpc.rpc_port, type = int)
+	parser.add_argument("--no-ssh", help = "Don't expect ssh tunneling(VERY UNSAFE). WARNING: DO NOT USE THIS OPTION!", default = False, action = "store_true")
 
 	args = vars(parser.parse_args())
 
-	host = ("0.0.0.0", args.pop("port"))
+	if args.pop("no_ssh"):
+		print "WARNING: external non-ssh connection will be accepted."
+		host = ("0.0.0.0", args.pop("port"))
+	else:
+		host = ("127.0.0.1", args.pop("port"))
 
 	sfd = None
 	def fin(foo, bar):
