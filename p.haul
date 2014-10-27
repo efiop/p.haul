@@ -4,6 +4,11 @@ import argparse
 import p_haul_iters as ph_iters
 import images
 import criu_api
+import xem_rpc
+import ssh_tunnel
+import util
+import os
+import pwd
 
 # Usage idea
 # p.haul <type> <id> <destination>
@@ -28,12 +33,19 @@ parser.add_argument("--img-path", help = "Dirctory where to put images", default
 parser.add_argument("--pid-root", help = "Path to tree's FS root")
 parser.add_argument("--force", help = "Don't do any sanity (CPU compat) checks", default = False, action = 'store_true')
 
+ssh = parser.add_argument_group("ssh tunnel", "CMD to establish ssh tunnel: " + ssh_tunnel.ssh_tunnel_cmd)
+ssh.add_argument("--ssh-comp", help = "Use compression in the ssh tunnel", default = "", action = "store_const", const = "C")
+ssh.add_argument("--ssh-user", help = "Remote username", type = str, default = pwd.getpwuid(os.getuid()).pw_name)
+ssh.add_argument("--ssh-port", help = "Port to connect to ssh on the remote host", default = ssh_tunnel.def_ssh_port, type = int)
+ssh.add_argument("--ssh-loc-port", help = "Local port to use for forwarding", default = ssh_tunnel.def_loc_port, type = int)
+ssh.add_argument("--ssh-rem-port", help = "Remote port to use for forwarding (p.haul-service port)", default = xem_rpc.default_rpc_port, type = int)
+
 args = vars(parser.parse_args())
 
 ph_type = (args.pop("type"), args.pop("id"))
-dst = args.pop("to")
+dst_opts, args = util.pop_dest_opts(args)
 
 # Start the migration
-worker = ph_iters.phaul_iter_worker(ph_type, dst)
+worker = ph_iters.phaul_iter_worker(ph_type, dst_opts)
 worker.set_options(args)
 worker.start_migration()

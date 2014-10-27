@@ -1,6 +1,7 @@
 import os
 import fcntl
 import errno
+import xem_rpc
 
 class net_dev:
 	def init(self):
@@ -44,3 +45,12 @@ def makedirs(dirpath):
 			pass
 		else:
 			raise
+
+def pop_dest_opts(opts):
+	dest_opts = {}
+	dest_opts["to"] = opts.pop("to")
+	for k in opts.keys():
+		if k.startswith("ssh"):
+			dest_opts[k] = opts.pop(k)
+
+	return dest_opts, opts

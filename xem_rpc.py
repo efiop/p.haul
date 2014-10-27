@@ -4,8 +4,10 @@ import threading
 import traceback
 import util
 import struct
+import ssh_tunnel
+import errno
 
-rpc_port = 12345
+default_rpc_port = 12345
 rpc_sk_buf = 256
 
 RPC_CMD = 1
@@ -14,6 +16,7 @@ RPC_CALL = 2
 RPC_RESP = 1
 RPC_EXC = 2
 
+CONNECT_ATTEMPTS = 2000
 #
 # Client
 #
@@ -40,8 +43,11 @@ class _rpc_proxy_caller:
 			raise Exception("Proto resp error")
 
 class rpc_proxy:
-	def __init__(self, conn, *args):
-		self._srv = conn
+	def __init__(self, conn_opts, *args):
+		self._ssh = ssh_tunnel.Tunnel(conn_opts)
+		self._srv = self._ssh.get_local_dst()
+		self._ssh.start()
+
 		self._rpc_sk = self._make_sk(init=True)
 		util.set_cloexec(self._rpc_sk)
 		_rpc_proxy_caller(self._rpc_sk, RPC_CMD, "init_rpc")(args)
@@ -51,7 +57,17 @@ class rpc_proxy:
 
 	def _make_sk(self, init=False):
 		sk = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		sk.connect((self._srv, rpc_port))
+		# ssh tunnel needs some time to start working, so lets
+		# make CONNECT_ATTEMPTS attempts to connect.
+		for n in xrange(CONNECT_ATTEMPTS):
+			try:
+				sk.connect(self._srv)
+			except socket.error as e:
+				if e.errno != errno.ECONNREFUSED or n == CONNECT_ATTEMPTS - 1:
+					raise e
+				else:
+					continue
+			break
 		if init:
 			return sk
 		else:
@@ -63,7 +79,6 @@ class rpc_proxy:
 		c = _rpc_proxy_caller(self._rpc_sk, RPC_CMD, "pick_channel")
 		c(host, uname)
 		return sk
-
 
 
 #
@@ -124,9 +139,9 @@ class _rpc_server_sk:
 			self._master.on_socket_open(sk._sk, uname)
 
 class _rpc_server_ask:
-	def __init__(self):
+	def __init__(self, port):
 		sk = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		sk.bind(("0.0.0.0", rpc_port))
+		sk.bind(("127.0.0.1", port))
 		sk.listen(8)
 		self._sk = sk
 		util.set_cloexec(self)
@@ -149,10 +164,10 @@ class _rpc_stop_fd:
 		mgr.stop()
 
 class _rpc_server_manager:
-	def __init__(self, srv_class):
+	def __init__(self, srv_class, port):
 		self._srv_class = srv_class
 		self._sk_by_name = {}
-		self._poll_list = [_rpc_server_ask()]
+		self._poll_list = [_rpc_server_ask(port)]
 		self._alive = True
 
 	def add(self, sk):
@@ -187,9 +202,9 @@ class _rpc_server_manager:
 		print "RPC Service stops"
 
 class rpc_threaded_srv(threading.Thread):
-	def __init__(self, srv_class):
+	def __init__(self, srv_class, port):
 		threading.Thread.__init__(self)
-		self._mgr = _rpc_server_manager(srv_class)
+		self._mgr = _rpc_server_manager(srv_class, port)
 		self._stop_fd = None
 
 	def run(self):
