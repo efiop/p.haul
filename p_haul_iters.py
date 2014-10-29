@@ -230,3 +230,4 @@ class phaul_iter_worker:
 		self._mstat.stop(self)
 		self.img.close()
 		cc.close()
+		self.th.close()

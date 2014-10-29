@@ -4,7 +4,7 @@ import threading
 import traceback
 import util
 import struct
-import ssh_tunnel
+import ssh
 import errno
 
 rpc_port = 12345
@@ -16,7 +16,7 @@ RPC_CALL = 2
 RPC_RESP = 1
 RPC_EXC = 2
 
-CONNECT_ATTEMPTS = 2000
+CONNECT_ATTEMPTS = 20000
 #
 # Client
 #
@@ -44,9 +44,9 @@ class _rpc_proxy_caller:
 
 class rpc_proxy:
 	def __init__(self, conn_opts, *args):
-		self._ssh = ssh_tunnel.Tunnel(conn_opts)
-		self._srv = self._ssh.get_local_dst()
+		self._ssh = ssh.SSH(conn_opts)
 		self._ssh.start()
+		self._srv = self._ssh.get_local_dst()
 
 		self._rpc_sk = self._make_sk()
 		util.set_cloexec(self._rpc_sk)
@@ -67,6 +67,8 @@ class rpc_proxy:
 					raise e
 				else:
 					continue
+
+			print(str(n))
 			break
 		return sk
 
@@ -77,7 +79,8 @@ class rpc_proxy:
 		c(host, uname)
 		return sk
 
-
+	def close(self):
+		self._ssh.stop()
 #
 # Server
 #
