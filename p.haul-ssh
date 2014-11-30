@@ -118,8 +118,11 @@ echo "Start p.haul-service"
 ${SSH_BASE} ${SERVER_FLAGS} ${PHS_EXEC} ${PHS_OPTS[@]} &> ${LOG} < /dev/null
 echo "Done"
 
+echo "Checking that p.haul-service is started"
+${SSH_BASE} "while netstat -lnt | awk '\$4 ~ /:${REM_PORT}$/ {exit 1}'; do echo 'Waiting...'; sleep 1; done"
+
 echo "Start ssh tunnel"
-${SSH_BASE} ${TUNNEL_FLAGS} -L ${LOC_PORT}:localhost:${REM_PORT}
+${SSH_BASE} ${TUNNEL_FLAGS} -L 127.0.0.1:${LOC_PORT}:127.0.0.1:${REM_PORT}
 echo "Done"
 
 echo "Launch p.haul"
