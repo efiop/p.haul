@@ -3,7 +3,6 @@ set -x
 CRIU_PATH="../../../criu/"
 CRIU_TESTS="${CRIU_PATH}/test/zdtm/"
 WDIR="$(pwd)/wdir"
-PH=$(realpath ../../p.haul)
 PHS=$(realpath ../../p.haul-service)
 
 rm -rf "$WDIR"
@@ -22,7 +21,7 @@ export PATH="${PATH}:${CRIU_PATH}"
 which criu
 
 echo "Migrating"
-if ! ../../p.haul-ssh --ssh-ph-exec ${PH} --ssh-phs-exec ${PHS} pid ${PID} "127.0.0.1" -v=4 --keep-images --dst-rpid "${WDIR}/init2.pid" --img-path "${WDIR}"; then
+if ! ../../p.haul --ssh-phs-exec ${PHS} pid ${PID} "127.0.0.1" -v=4 --keep-images --dst-rpid "${WDIR}/init2.pid" --img-path "${WDIR}"; then
 	echo "Migration failed"
 	kill -TERM ${PID}
 	exit 1
