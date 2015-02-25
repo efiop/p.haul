@@ -6,6 +6,7 @@
 
 import subprocess as sp
 import os
+import ssh
 
 rsync_log_file = "rsync.log"
 
@@ -29,8 +30,12 @@ class p_haul_fs:
 		# to produce big pause between the 1st pre-dump and
 		# .stop_migration
 
-		ret = sp.call(["rsync", "-a", self.__root, dst],
+		if ssh._no_ssh:
+			ret = sp.call(["rsync", "-a", self.__root, dst],
 				stdout = logf, stderr = logf)
+		else:
+			ret = sp.call(["rsync", "-e", "'%s'" % ssh.opts['SSH_BASE'],
+				"-a", self.__root], stdout = logf, stderr = logf)
 		if ret != 0:
 			raise Exception("Rsync failed")
 
